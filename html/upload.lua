@@ -122,6 +122,10 @@ function upload_handler.upload(form)
             break
         end
 
+        local md5_checksum = md5.file_sum(file_path)
+        if md5_checksum == form['file_md5'] then
+            break
+        end
 
         file_name = file_rename(file_name)
         file_path = path .. file_name
@@ -151,20 +155,6 @@ function file_exist(path)
     if type(path) ~= 'string' then
         return false
     end
-
-    --[[
-    local name, extention_name
-    local duplicate_num
-
-    name, extention_name, duplicate_num = file_spilt_name(path)
-    if duplicate_num > 0 then
-        if extention_name == nil then
-            path = name .. '(' .. tostring(duplicate_num) .. ')'
-        else
-            path = name .. '(' .. tostring(duplicate_num) .. ')' .. '.' ..extention_name
-        end
-    end
-    --]]
 
     local h = io.open(path)
     if h == nil then
