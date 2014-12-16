@@ -2,12 +2,12 @@
 
 --[[
 
-    UPLOAD HANDLER
+UPLOAD HANDLER
 
-    1. parse form fields.
-    2. move file.
-    3. generate json message.
-    4. send to nginx.
+1. parse form fields.
+2. move file.
+3. generate json message.
+4. send to nginx.
 
 --]]
 
@@ -16,11 +16,6 @@ local md5  = require"cmd5"
 local json = require"cjson"
 
 local upload_handler = {}
-
-function upload_handler.set_handers()
-    ngx.req.set_header("Content-Type", "text/plain")
-    return true
-end
 
 function upload_handler.reply(result, err)
     local dump
@@ -73,26 +68,70 @@ end
 
 function upload_handler.parse()
     local args, err
-    local result, error_code
+    local file_info_table, error_code
+    local upload_type
 
     ngx.req.read_body()
 
+    --[[
+    get http headers.
+    parse upload type basing on session-id and content-range.
+    --]]
+    local header = ngx.req.get_headers()
+    if header['session-id'] ~= nil
+        and (header['x-content-range'] ~= nil
+            or header['content-range'] ~= nil) then
+        upload_type = 'resumable'
+    else
+        upload_type = 'form'
+    end
+
+    --[[
+    get post args and parse form data.
+    --]]
     args, err = ngx.req.get_post_args()
     if not args then
         return nil
     end
 
     s = ''
-    for key, val in pairs(args) do
-        s = s .. key .. '='.. val
+    for k, v in pairs(args) do
+        s = s .. k.. '='.. v
     end
 
-    result = {}
-    result = upload_handler.get_form_data(s)
+    file_info_table = {}
+    file_info_table = upload_handler.get_form_data(s)
+
+    --[[
+    if the upload type is 'resumable upload', wrapper the form table again.
+    parse 'filename' and 'filepath' from headers.
+    --]]
+    if string.match(upload_type, 'resumable') then
+        local tmp = {}
+        local file_name
+        local file_path
+        local file_name_pattern = 'file=%s*(.*)%;'
+        local file_path_pattern = 'path=%s*(.*)'
+
+        header = ngx.req.get_headers()
+        file_name = string.match(header['content-disposition'], file_name_pattern)
+        file_path = string.match(header['content-disposition'], file_path_pattern)
+
+        tmp['file_size'] = file_info_table['_size']
+        tmp['file_name'] = file_name
+        tmp['path'] = file_path
+        tmp['file_tmp_path'] = file_info_table['_tmp_path']
+        tmp['file_md5'] = md5.file_sum(file_info_table['_tmp_path'])
+        file_info_table = tmp
+    end
+
+    for k, v in pairs(file_info_table) do
+        print('file info table:'.. k..': '..v)
+    end
 
     error_code = nil
 
-    return result, error_code
+    return file_info_table, error_code
 end
 
 function upload_handler.upload(form)
@@ -156,11 +195,11 @@ function file_exist(path)
         return false
     end
 
-    local h = io.open(path)
-    if h == nil then
+    local handle = io.open(path)
+    if handle == nil then
         return false
     else
-        io.close(h)
+        io.close(handle)
         return true
     end
 end
@@ -257,8 +296,6 @@ end
 
 local result = {}
 local error_code
-
-upload_handler.set_handers()
 
 result, error_code = upload_handler.parse()
 if result ~= nil then
