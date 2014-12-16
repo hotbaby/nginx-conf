@@ -163,6 +163,7 @@ function upload_handler.upload(form)
 
         local md5_checksum = md5.file_sum(file_path)
         if md5_checksum == form['file_md5'] then
+            print('md5 uniformity')
             break
         end
 
@@ -174,9 +175,9 @@ function upload_handler.upload(form)
     name, extention_name, duplicate_num = file_spilt_name(file_name)
     if duplicate_num > 0 then
         if extention_name == nil then
-            file_path =  name .. "'('" .. tostring(duplicate_num) .. "')'"
+            file_path =  path .. name .. "'('" .. tostring(duplicate_num) .. "')'"
         else
-            file_path =  name .. "'('" .. tostring(duplicate_num) .. "')'"
+            file_path =  path .. name .. "'('" .. tostring(duplicate_num) .. "')'"
                         .. '.' .. extention_name
         end
     end
