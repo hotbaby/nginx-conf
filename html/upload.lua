@@ -11,6 +11,9 @@ UPLOAD HANDLER
 
 --]]
 
+package.path = '/usr/lib/lua/?.lua;'
+package.cpath = '/usr/lib/lua/?.so;'
+
 local string, exec, io = string, os.execute, io
 local md5  = require"cmd5"
 local json = require"cjson"
