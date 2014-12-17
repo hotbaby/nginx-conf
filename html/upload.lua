@@ -125,6 +125,9 @@ function upload_handler.parse()
         file_info_table = tmp
     end
 
+    --[[
+    debug file info table.
+    --]]
     for k, v in pairs(file_info_table) do
         print('file info table:'.. k..': '..v)
     end
