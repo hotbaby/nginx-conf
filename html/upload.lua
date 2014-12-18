@@ -37,7 +37,11 @@ function upload_handler.reply(result, err)
     dump = json.encode(response)
     ngx.log(ngx.INFO, dump)
 
-    return ngx.say(dump)
+    ngx.header['Content-Length'] = string.len(dump)
+    ngx.header['Content-Type'] = 'text/plain'
+    ngx.send_headers()
+
+    ngx.say(dump)
 end
 
 --[[
@@ -311,4 +315,4 @@ if result ~= nil then
 else
     upload_handler.reply(result, error_code)
 end
-
+ngx.eof()
