@@ -192,7 +192,16 @@ function upload_handler.upload(form)
         end
     end
 
-    cmd = 'mv'.. ' ' .. file_tmp_path .. ' ' .. file_path
+    local decode_table
+    local target_path
+    decode_table = ngx.decode_args(file_path, 0)
+    for k, v in pairs(decode_table) do
+        ngx.log(ngx.INFO, 'k:', k, ' v:', v)
+        target_path = k
+        break
+    end
+
+    cmd = 'mv'.. ' ' .. file_tmp_path .. ' ' .. target_path
     ngx.log(ngx.INFO, 'cmd:', cmd)
     exec(cmd)
 
