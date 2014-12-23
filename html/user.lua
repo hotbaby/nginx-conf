@@ -6,8 +6,8 @@ USER MANAGER MODULE
 
 --]]
 
-package.path    = '/usr/lib/lua/?.lua;'
-package.cpath   = '/usr/lib/lua/?.so;'
+package.path    = '/usr/lib/lua/?.lua;./html/?.lua;./?.lua;'
+package.cpath   = '/usr/lib/lua/?.so;./html/?.so;./?.so;'
 
 local os        = require('os')
 local uuid      = require('uuid')
@@ -16,7 +16,7 @@ local sqlite3   = require('lsqlite3')
 module('user', package.seeall)
 
 local expire     =  2592000     --1 month
-local session_db = '/home/yy/nginx/html/session.db'
+local session_db = './html/session.db'
 
 function create()
 end

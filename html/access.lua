@@ -6,8 +6,8 @@ AUTHENTICATION
 
 --]]
 
-package.path = '/usr/lib/lua/?.lua;'
-package.cpath = '/usr/lib/lua/?.so;'
+package.path = '/usr/lib/lua/?.lua;./html/?.lua;./?.lua;'
+package.cpath = '/usr/lib/lua/?.so;./html/?.so;./?.so;'
 
 local user = require('user')
 local json = require('cjson')
