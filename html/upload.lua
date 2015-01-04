@@ -17,12 +17,18 @@ package.cpath = '/usr/lib/lua/?.so;./?.so;'
 local string, exec, io = string, os.execute, io
 local md5  = require"cmd5"
 local json = require"cjson"
+local fs   = require"nixio.fs"
 
 local upload_handler = {}
 
-function upload_handler.reply(result, err)
+function upload_handler.reply(result, error_code)
+    local err
     local dump
     local response = {}
+
+    err = {}
+    err['code']    = 3007 
+    err['message'] = 'file move failed'
 
     if result ~= nil then
         response['result'] = result
@@ -50,7 +56,8 @@ end
 --]]
 function upload_handler.get_form_data(value)
     local result = {}
-    local pattern = 'name=%"[%w_]*%"%\r%\n%\r%\n[/%w%.%-]*%\r%\n'
+    --local pattern = 'name=%"[%w_]*%"%\r%\n%\r%\n[/%w%.%-%_]*%\r%\n'
+    local pattern = 'name=%"(.-)%"%\r%\n%\r%\n(.-)%\r%\n'
 
     if type(value) ~= "string" then
         return nil
@@ -58,17 +65,23 @@ function upload_handler.get_form_data(value)
 
     local start = value
 
+    for k, v in string.gmatch(start, pattern) do
+        result[k] = v
+    end
+
+    --[[
     local s, e
     local key, val
     for w in string.gmatch(start, pattern) do
         s,e = string.find(w, 'name=%"[%w_]*%"')
         key = string.sub(w, s+6, e-1)
 
-        s,e = string.find(w, '%\r%\n%\r%\n[/%w%.%-]*%\r%\n')
+        s,e = string.find(w, '%\r%\n%\r%\n[/%w%.%-%_]*%\r%\n')
         val = string.sub(w, s+4, e-2)
 
         result[key] = val
     end
+    --]]
 
     return result
 end
@@ -106,6 +119,7 @@ function upload_handler.parse()
         s = s .. k.. '='.. v
     end
 
+    ngx.log(ngx.INFO, s)
     file_info_table = {}
     file_info_table = upload_handler.get_form_data(s)
 
@@ -155,7 +169,12 @@ function upload_handler.upload(form)
         return nil
     end
 
+    for k, v in pairs(form) do
+        print(k, v)
+    end
+
     path = form['path']
+    path = '/home/homecloud/files' .. path
     e = string.sub(path, #path)
     if e ~= '/' then
         path = path .. '/'
@@ -181,16 +200,19 @@ function upload_handler.upload(form)
         file_path = path .. file_name
     end
 
+    ngx.log(ngx.INFO, 'path:', path)
     local name, extention_name, duplicate_num
     name, extention_name, duplicate_num = file_spilt_name(file_name)
     if duplicate_num > 0 then
         if extention_name == nil then
-            file_path =  path .. name .. "'('" .. tostring(duplicate_num) .. "')'"
+            --file_path =  path .. name .. "'('" .. tostring(duplicate_num) .. "')'"
+            file_path =  path .. name .. "(" .. tostring(duplicate_num) .. ")"
         else
-            file_path =  path .. name .. "'('" .. tostring(duplicate_num) .. "')'"
-                        .. '.' .. extention_name
+            --file_path =  path .. name .. "'('" .. tostring(duplicate_num) .. "')'" .. '.' .. extention_name
+            file_path =  path .. name .. "(" .. tostring(duplicate_num) .. ")" .. '.' .. extention_name
         end
     end
+    ngx.log(ngx.INFO, 'file_path:', file_path)
 
     local decode_table
     local target_path
@@ -200,12 +222,34 @@ function upload_handler.upload(form)
         target_path = k
         break
     end
+    ngx.log(ngx.INFO, 'target_path:', target_path)
 
     cmd = 'mv'.. ' ' .. file_tmp_path .. ' ' .. target_path
     ngx.log(ngx.INFO, 'cmd:', cmd)
-    exec(cmd)
 
-    return form
+    local ret  
+    local result = {}
+    ret = fs.move(file_tmp_path, target_path)
+    if ret ~= true then
+        return nil
+    else
+        local stat = fs.stat(target_path)
+	local path = form['path']
+	if string.sub(path, #path) ~= '/' then
+            path = path .. '/' 
+	end
+        --result['path'] 	= path .. ['file_name'] 
+        result['path'] 	= path .. file_name
+        result['fid']  	= stat['ino']
+        result['ctime'] = stat['ctime']
+        result['mtime'] = stat['mtime'] 
+        result['size'] 	= stat['size'] 
+        result['isdir'] = false
+        result['thumbnail'] = '' 
+	
+        return result
+    end
+
 end
 
 function file_exist(path)

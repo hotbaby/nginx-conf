@@ -6,8 +6,8 @@ AUTHENTICATION
 
 --]]
 
-package.path = '/usr/lib/lua/?.lua;./html/?.lua;./?.lua;'
-package.cpath = '/usr/lib/lua/?.so;./html/?.so;./?.so;'
+package.path = '/usr/lib/lua/?.lua;/home/homecloud/www/html/?.lua;./?.lua;'
+package.cpath = '/usr/lib/lua/?.so;/home/homecloud/www/html/?.so;./?.so;'
 
 local user = require('user')
 local json = require('cjson')
@@ -30,7 +30,7 @@ function authentication()
         return false
     end
 
-    if body_json['token'] ~= nil then
+    if body_json['token'] ~= nil and body_json['method'] ~= 'ROUTER.isInitial' then
 
         local result
         result = user.check(body_json['token'])
@@ -75,6 +75,9 @@ function authentication()
 
             return true
         end
+    elseif body_json['method'] == 'ROUTER.isInitial' then
+        ngx.log(ngx.INFO, 'router isInitial.') 
+        return true	
     else
         ngx.exit(ngx.HTTP_UNAUTHORIZED)
         return false

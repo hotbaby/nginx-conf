@@ -16,7 +16,7 @@ local sqlite3   = require('lsqlite3')
 module('user', package.seeall)
 
 local expire     =  2592000     --1 month
-local session_db = './html/session.db'
+local session_db = '/home/homecloud/www/html/session.db'
 
 function create()
 end
@@ -37,6 +37,7 @@ function login(...)
     local db
     local found = false
     local sql = 'select * from user where username=' .. '\'' .. username .. '\'' .. ' and ' .. 'password=' .. '\'' .. password .. '\''
+    print(sql)
 
     db = sqlite3.open(session_db)
     if db ~= nil then
@@ -64,7 +65,14 @@ function login(...)
         db = sqlite3.open(session_db)
         if db ~= nil then
             sql = 'insert into session (token, username, ctime) values('..'\''..token..'\''..', '..'\'' .. username..'\''..', '..ctime..')'
-            db:exec(sql)
+    	    print(sql)
+	    local ret = db:exec(sql) 
+            print(ret)
+            if ret ~= sqlite3.OK then
+                print('user insert into session error: .', ret)
+            else
+                print('user insert into session ok. ')
+            end
             db:close()
         else
             return nil
