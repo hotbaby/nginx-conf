@@ -11,8 +11,8 @@ UPLOAD HANDLER
 
 --]]
 
-package.path  = '/usr/lib/lua/?.lua;./?.lua;'
-package.cpath = '/usr/lib/lua/?.so;./?.so;'
+package.path    = '/usr/lib/lua/?.lua;/www/html/?.lua;./?.lua;'
+package.cpath   = '/usr/lib/lua/?.so;/www/html/?.so;./?.so;'
 
 local string, exec, io = string, os.execute, io
 local md5  = require"cmd5"
