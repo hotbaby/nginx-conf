@@ -31,5 +31,8 @@ function auth()
     end
 end
 
-auth()
+local ret = auth()
+if ret ~= true then
+    ngx.log(ngx.ERR, '@auth@ authenication error.')
+end
 

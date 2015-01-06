@@ -18,45 +18,38 @@ local string, exec, io = string, os.execute, io
 local md5  = require"cmd5"
 local json = require"cjson"
 local fs   = require"nixio.fs"
+local error_code = require"error_code"
 
-local upload_handler = {}
+local upload= {}
 
-function upload_handler.reply(result, error_code)
-    local err
+function upload.reply(result)
     local dump
     local response = {}
-
-    err = {}
-    err['code']    = 3007 
-    err['message'] = 'file move failed'
 
     if result ~= nil then
         response['result'] = result
     else
+        local err = {}
+        err['code']    = -33100
+        err['message'] = error_code[err['code']]
         response['error'] = err
     end
 
     response['jsonrpc'] = '2.0'
     response['id'] = nil
 
-
     dump = json.encode(response)
     ngx.log(ngx.INFO, dump)
 
     ngx.header['Content-Length'] = string.len(dump)
-    ngx.header['Content-Type'] = 'text/plain'
+    ngx.header['Content-Type'] = 'application/json'
     ngx.send_headers()
 
     ngx.say(dump)
 end
 
---[[
-    TODO
-    whether the regular expressions can match completely or not.
---]]
-function upload_handler.get_form_data(value)
+function upload.get_form_data(value)
     local result = {}
-    --local pattern = 'name=%"[%w_]*%"%\r%\n%\r%\n[/%w%.%-%_]*%\r%\n'
     local pattern = 'name=%"(.-)%"%\r%\n%\r%\n(.-)%\r%\n'
 
     if type(value) ~= "string" then
@@ -69,26 +62,12 @@ function upload_handler.get_form_data(value)
         result[k] = v
     end
 
-    --[[
-    local s, e
-    local key, val
-    for w in string.gmatch(start, pattern) do
-        s,e = string.find(w, 'name=%"[%w_]*%"')
-        key = string.sub(w, s+6, e-1)
-
-        s,e = string.find(w, '%\r%\n%\r%\n[/%w%.%-%_]*%\r%\n')
-        val = string.sub(w, s+4, e-2)
-
-        result[key] = val
-    end
-    --]]
-
     return result
 end
 
-function upload_handler.parse()
+function upload.parse()
     local args, err
-    local file_info_table, error_code
+    local file_info_table
     local upload_type
 
     ngx.req.read_body()
@@ -121,7 +100,7 @@ function upload_handler.parse()
 
     ngx.log(ngx.INFO, s)
     file_info_table = {}
-    file_info_table = upload_handler.get_form_data(s)
+    file_info_table = upload.get_form_data(s)
 
     --[[
     if the upload type is 'resumable upload', wrapper the form table again.
@@ -138,12 +117,12 @@ function upload_handler.parse()
         file_name = string.match(header['content-disposition'], file_name_pattern)
         file_path = string.match(header['content-disposition'], file_path_pattern)
 
-        tmp['file_size'] = file_info_table['_size']
-        tmp['file_name'] = file_name
-        tmp['path'] = file_path
+        tmp['file_size']    = file_info_table['_size']
+        tmp['file_name']    = file_name
+        tmp['path']         = file_path
         tmp['file_tmp_path'] = file_info_table['_tmp_path']
-        tmp['file_md5'] = md5.file_sum(file_info_table['_tmp_path'])
-        file_info_table = tmp
+        tmp['file_md5']     = md5.file_sum(file_info_table['_tmp_path'])
+        file_info_table     = tmp
     end
 
     --[[
@@ -153,24 +132,17 @@ function upload_handler.parse()
         print('file info table:'.. k..': '..v)
     end
 
-    error_code = nil
-
-    return file_info_table, error_code
+    return file_info_table
 end
 
-function upload_handler.upload(form)
+function upload.upload(form)
     local e
     local ret
-    local cmd
     local file_tmp_path, path
     local file_name
 
     if type(form) ~= 'table' then
         return nil
-    end
-
-    for k, v in pairs(form) do
-        print(k, v)
     end
 
     path = form['path']
@@ -200,53 +172,46 @@ function upload_handler.upload(form)
         file_path = path .. file_name
     end
 
-    ngx.log(ngx.INFO, 'path:', path)
     local name, extention_name, duplicate_num
     name, extention_name, duplicate_num = file_spilt_name(file_name)
     if duplicate_num > 0 then
         if extention_name == nil then
-            --file_path =  path .. name .. "'('" .. tostring(duplicate_num) .. "')'"
             file_path =  path .. name .. "(" .. tostring(duplicate_num) .. ")"
         else
-            --file_path =  path .. name .. "'('" .. tostring(duplicate_num) .. "')'" .. '.' .. extention_name
             file_path =  path .. name .. "(" .. tostring(duplicate_num) .. ")" .. '.' .. extention_name
         end
     end
-    ngx.log(ngx.INFO, 'file_path:', file_path)
 
     local decode_table
     local target_path
     decode_table = ngx.decode_args(file_path, 0)
     for k, v in pairs(decode_table) do
-        ngx.log(ngx.INFO, 'k:', k, ' v:', v)
         target_path = k
         break
     end
     ngx.log(ngx.INFO, 'target_path:', target_path)
 
-    cmd = 'mv'.. ' ' .. file_tmp_path .. ' ' .. target_path
-    ngx.log(ngx.INFO, 'cmd:', cmd)
-
-    local ret  
+    local ret
     local result = {}
     ret = fs.move(file_tmp_path, target_path)
+
     if ret ~= true then
         return nil
     else
         local stat = fs.stat(target_path)
-	local path = form['path']
-	if string.sub(path, #path) ~= '/' then
-            path = path .. '/' 
-	end
-        --result['path'] 	= path .. ['file_name'] 
-        result['path'] 	= path .. file_name
-        result['fid']  	= stat['ino']
+        local path = form['path']
+        if string.sub(path, #path) ~= '/' then
+            path = path .. '/'
+        end
+
+        result['path']  = path .. file_name
+        result['fid']   = stat['ino']
         result['ctime'] = stat['ctime']
-        result['mtime'] = stat['mtime'] 
-        result['size'] 	= stat['size'] 
+        result['mtime'] = stat['mtime']
+        result['size']  = stat['size']
         result['isdir'] = false
-        result['thumbnail'] = '' 
-	
+        result['thumbnail'] = ''
+
         return result
     end
 
@@ -359,13 +324,12 @@ function file_spilt_name(str)
 end
 
 local result = {}
-local error_code
 
-result, error_code = upload_handler.parse()
+result = upload.parse()
 if result ~= nil then
-    result, error_code = upload_handler.upload(result)
-    upload_handler.reply(result, error_code)
+    result = upload.upload(result)
+    upload.reply(result)
 else
-    upload_handler.reply(result, error_code)
+    upload.reply(result)
 end
 ngx.eof()
