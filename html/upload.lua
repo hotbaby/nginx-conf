@@ -152,6 +152,10 @@ function upload.upload(form)
         path = path .. '/'
     end
 
+    if fs.access(path) ~= true then
+        fs.mkdir(path, '775')
+    end
+
     file_name = form['file_name']
     file_tmp_path = form['file_tmp_path']
 
