@@ -42,7 +42,7 @@ function check(...)
 
             local create_time, current_time
 
-            create_time = rows[1]['ctime']
+            create_time = rows[1]['atime']
             current_time = os.time()
             if current_time - create_time < expire then
                 found = true
