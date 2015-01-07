@@ -16,7 +16,7 @@ local safesql   = require('safesql')
 module('user', package.seeall)
 
 local expire     = 86400
-local session_db = '/www/html/session.db'
+local session_db = '/usr/lib/service-manager/usrmgn/session.db'
 
 function check(...)
     args = { ... }
