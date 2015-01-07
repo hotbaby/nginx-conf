@@ -2,7 +2,7 @@
 
 --[[
 
-DOWNLOAD HANDLER
+DOWNLOAD ERROR HANDLER
 
 --]]
 

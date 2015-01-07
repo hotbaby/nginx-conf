@@ -13,6 +13,8 @@ module('error_code', package.seeall)
 
 error_code = {}
 
+error_code[-33000] = 'Authenication error'
+
 --[[
 Upload error code.
 range: -33100 ~ -33199
